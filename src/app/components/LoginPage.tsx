@@ -1,21 +1,25 @@
-import { useState } from 'react';
-import { UserType } from '../context/AuthContext';
-import { GraduationCap, User } from 'lucide-react';
-import logoIfmg from '../../imports/1000658421.jpg';
+import { useState } from "react";
+import { GraduationCap, User, Loader2 } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
+import logoIfmg from "../../imports/1000658421.jpg";
 
-interface LoginPageProps {
-  onLogin: (email: string, password: string, type: UserType) => void;
-}
+export function LoginPage() {
+  const { login } = useAuth();
+  const [email, setEmail]       = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading]   = useState(false);
+  const [error, setError]       = useState<string | null>(null);
 
-export function LoginPage({ onLogin }: LoginPageProps) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [userType, setUserType] = useState<UserType>('student');
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (email && password) {
-      onLogin(email, password, userType);
+    setError(null);
+    setLoading(true);
+    try {
+      await login(email, password);
+    } catch (err: any) {
+      setError(err.message || "Erro ao fazer login. Verifique suas credenciais.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -31,37 +35,11 @@ export function LoginPage({ onLogin }: LoginPageProps) {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label className="block mb-3 text-foreground">
-              Tipo de Usuário
-            </label>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => setUserType('student')}
-                className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all ${
-                  userType === 'student'
-                    ? 'border-primary bg-primary/5 text-primary'
-                    : 'border-border text-muted-foreground hover:border-primary/50'
-                }`}
-              >
-                <GraduationCap className="w-8 h-8" />
-                <span>Aluno</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setUserType('teacher')}
-                className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all ${
-                  userType === 'teacher'
-                    ? 'border-primary bg-primary/5 text-primary'
-                    : 'border-border text-muted-foreground hover:border-primary/50'
-                }`}
-              >
-                <User className="w-8 h-8" />
-                <span>Professor</span>
-              </button>
+          {error && (
+            <div className="px-4 py-3 bg-destructive/10 border border-destructive/30 text-destructive rounded-lg text-sm">
+              {error}
             </div>
-          </div>
+          )}
 
           <div>
             <label htmlFor="email" className="block mb-2 text-foreground">
@@ -75,6 +53,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
               className="w-full px-4 py-3 bg-input-background rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-primary"
               placeholder="seu.email@ifmg.edu.br"
               required
+              disabled={loading}
             />
           </div>
 
@@ -90,21 +69,30 @@ export function LoginPage({ onLogin }: LoginPageProps) {
               className="w-full px-4 py-3 bg-input-background rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-primary"
               placeholder="••••••••"
               required
+              disabled={loading}
             />
           </div>
 
           <button
             type="submit"
-            className="w-full py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+            disabled={loading}
+            className="w-full py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
           >
-            Entrar
+            {loading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Entrando...
+              </>
+            ) : (
+              "Entrar"
+            )}
           </button>
         </form>
 
         <div className="mt-6 text-center">
-          <a href="#" className="text-primary hover:underline">
-            Esqueceu sua senha?
-          </a>
+          <p className="text-sm text-muted-foreground">
+            O tipo de usuário (Aluno ou Professor) é definido pelo administrador no cadastro.
+          </p>
         </div>
       </div>
     </div>

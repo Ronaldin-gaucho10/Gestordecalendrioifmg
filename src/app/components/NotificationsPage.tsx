@@ -1,117 +1,128 @@
-import { Bell, Check, X } from 'lucide-react';
-
-interface Notification {
-  id: number;
-  title: string;
-  message: string;
-  time: string;
-  read: boolean;
-  type: 'info' | 'warning' | 'success';
-}
+import { useEffect, useState } from "react";
+import { formatDistanceToNow } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { Bell, Check, CheckCheck, Loader2 } from "lucide-react";
+import { notificacoesApi, ApiNotificacao } from "../services/api";
 
 export function NotificationsPage() {
-  const notifications: Notification[] = [
-    {
-      id: 1,
-      title: 'Novo evento adicionado',
-      message: 'Reunião de Coordenação agendada para amanhã às 09:00',
-      time: 'há 5 minutos',
-      read: false,
-      type: 'info'
-    },
-    {
-      id: 2,
-      title: 'Lembrete de evento',
-      message: 'Aula de Programação começa em 1 hora',
-      time: 'há 30 minutos',
-      read: false,
-      type: 'warning'
-    },
-    {
-      id: 3,
-      title: 'Evento concluído',
-      message: 'Atendimento aos Alunos foi marcado como concluído',
-      time: 'há 2 horas',
-      read: true,
-      type: 'success'
-    },
-    {
-      id: 4,
-      title: 'Calendário atualizado',
-      message: 'O calendário acadêmico foi atualizado com novos feriados',
-      time: 'há 1 dia',
-      read: true,
-      type: 'info'
-    }
-  ];
+  const [notificacoes, setNotificacoes] = useState<ApiNotificacao[]>([]);
+  const [loading, setLoading]           = useState(true);
+  const [error, setError]               = useState<string | null>(null);
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const carregar = () =>
+    notificacoesApi
+      .listar()
+      .then(setNotificacoes)
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false));
+
+  useEffect(() => { carregar(); }, []);
+
+  const marcarLida = async (id: number) => {
+    await notificacoesApi.marcarLida(id);
+    setNotificacoes((prev) =>
+      prev.map((n) => (n.id_notificacao === id ? { ...n, status_leitura: true } : n))
+    );
+  };
+
+  const marcarTodas = async () => {
+    await notificacoesApi.marcarTodasLidas();
+    setNotificacoes((prev) => prev.map((n) => ({ ...n, status_leitura: true })));
+  };
+
+  const naoLidas = notificacoes.filter((n) => !n.status_leitura).length;
 
   return (
     <div className="max-w-4xl mx-auto px-4">
-      <div className="mb-6 text-center">
-        <h2 className="text-primary mb-2">Notificações</h2>
-        <p className="text-muted-foreground">
-          Você tem {unreadCount} {unreadCount === 1 ? 'notificação não lida' : 'notificações não lidas'}
-        </p>
+      <div className="flex flex-col md:flex-row items-center justify-between mb-6 gap-4">
+        <div className="text-center md:text-left">
+          <h2 className="text-primary mb-2">Notificações</h2>
+          <p className="text-muted-foreground">
+            {naoLidas > 0
+              ? `Você tem ${naoLidas} ${naoLidas === 1 ? "notificação não lida" : "notificações não lidas"}`
+              : "Tudo em dia"}
+          </p>
+        </div>
+        {naoLidas > 0 && (
+          <button
+            onClick={marcarTodas}
+            className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg hover:bg-accent transition-colors text-sm"
+          >
+            <CheckCheck className="w-4 h-4" />
+            Marcar todas como lidas
+          </button>
+        )}
       </div>
 
-      <div className="space-y-3">
-        {notifications.map((notification) => (
-          <div
-            key={notification.id}
-            className={`bg-white border rounded-lg p-5 transition-all ${
-              notification.read
-                ? 'border-border'
-                : 'border-primary/30 bg-primary/5'
-            }`}
-          >
-            <div className="flex items-start gap-4">
+      {loading && (
+        <div className="flex justify-center py-16">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      )}
+
+      {error && (
+        <div className="text-center py-8 text-destructive bg-destructive/10 rounded-lg border border-destructive/20">
+          {error}
+        </div>
+      )}
+
+      {!loading && !error && (
+        <div className="space-y-3">
+          {notificacoes.length === 0 ? (
+            <div className="text-center py-16 bg-white rounded-lg border border-border">
+              <Bell className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+              <p className="text-muted-foreground">Nenhuma notificação</p>
+            </div>
+          ) : (
+            notificacoes.map((n) => (
               <div
-                className={`flex items-center justify-center w-12 h-12 rounded-full flex-shrink-0 ${
-                  notification.type === 'info'
-                    ? 'bg-blue-100 text-blue-600'
-                    : notification.type === 'warning'
-                    ? 'bg-yellow-100 text-yellow-600'
-                    : 'bg-green-100 text-green-600'
+                key={n.id_notificacao}
+                className={`bg-white border rounded-lg p-5 transition-all ${
+                  n.status_leitura ? "border-border" : "border-primary/30 bg-primary/5"
                 }`}
               >
-                <Bell className="w-5 h-5" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1">
-                    <h3 className="text-foreground mb-1">
-                      {notification.title}
-                      {!notification.read && (
-                        <span className="ml-2 inline-block w-2 h-2 bg-primary rounded-full"></span>
-                      )}
-                    </h3>
-                    <p className="text-muted-foreground mb-2">{notification.message}</p>
-                    <p className="text-sm text-muted-foreground">{notification.time}</p>
+                <div className="flex items-start gap-4">
+                  <div className={`flex items-center justify-center w-12 h-12 rounded-full flex-shrink-0 ${
+                    n.status_leitura ? "bg-gray-100 text-gray-500" : "bg-primary/10 text-primary"
+                  }`}>
+                    <Bell className="w-5 h-5" />
                   </div>
-                  <div className="flex gap-2">
-                    {!notification.read && (
-                      <button
-                        className="p-2 hover:bg-primary/10 rounded-md text-primary transition-colors"
-                        title="Marcar como lida"
-                      >
-                        <Check className="w-4 h-4" />
-                      </button>
-                    )}
-                    <button
-                      className="p-2 hover:bg-destructive/10 rounded-md text-destructive transition-colors"
-                      title="Excluir"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        {n.eventos?.titulo && (
+                          <p className="font-medium text-foreground mb-0.5">
+                            {n.eventos.titulo}
+                            {!n.status_leitura && (
+                              <span className="ml-2 inline-block w-2 h-2 bg-primary rounded-full align-middle" />
+                            )}
+                          </p>
+                        )}
+                        <p className="text-muted-foreground">{n.mensagem}</p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {formatDistanceToNow(new Date(n.data_envio), {
+                            addSuffix: true,
+                            locale: ptBR,
+                          })}
+                        </p>
+                      </div>
+                      {!n.status_leitura && (
+                        <button
+                          onClick={() => marcarLida(n.id_notificacao)}
+                          className="p-2 hover:bg-primary/10 rounded-md text-primary transition-colors flex-shrink-0"
+                          title="Marcar como lida"
+                        >
+                          <Check className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
-        ))}
-      </div>
+            ))
+          )}
+        </div>
+      )}
     </div>
   );
 }
