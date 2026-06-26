@@ -24,6 +24,12 @@ app.use("/turmas",        turmasRoutes);
 app.use("/eventos",       eventosRoutes);
 app.use("/notificacoes",  notificacoesRoutes);
 
-app.listen(PORT, () => {
-  console.log(`Servidor rodando em http://localhost:${PORT}`);
-});
+// Garante que o listen só rode localmente e não atrapalhe o Vercel
+if (process.env.NODE_ENV !== "production") {
+  app.listen(PORT, () => {
+    console.log(`Servidor rodando em http://localhost:${PORT}`);
+  });
+}
+
+// Exportação essencial para o deploy no Vercel funcionar
+export default app;
